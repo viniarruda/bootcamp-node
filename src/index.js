@@ -26,7 +26,41 @@ const transformToLowercase = value => {
   return value.toLowerCase();
 };
 
-app.get("/users/:name", (req, res) => {
+// Specific middleware
+const checkNameExists = (req, res, next) => {
+  if (!req.body.name) {
+    return res.status(400).json({ error: "Name is required" });
+  }
+  return next();
+};
+
+const checkUserExist = (req, res, next) => {
+  const { name } = req.params;
+
+  if (
+    !users.some(
+      s => transformToLowercase(s.name) === transformToLowercase(name)
+    )
+  ) {
+    return res.status(400).json({ error: "User does not exist" });
+  }
+  // manipulate req
+  // req.user = { name: 'New', lastName: 'Person'}
+  return next();
+};
+
+// Middleware Global
+app.use((req, res, next) => {
+  console.time("Request");
+
+  console.log(`Method: ${req.method}; URL: ${req.url};`);
+
+  next();
+
+  console.timeEnd("Request");
+});
+
+app.get("/users/:name", checkUserExist, (req, res) => {
   const { name } = req.params;
 
   const result = users.find(
@@ -44,7 +78,7 @@ app.get("/users", (req, res) => {
   });
 });
 
-app.post("/users/", (req, res) => {
+app.post("/users/", checkNameExists, (req, res) => {
   const { name, lastName } = req.body;
 
   users = [...users, { name, lastName }];
@@ -54,7 +88,7 @@ app.post("/users/", (req, res) => {
   });
 });
 
-app.put("/users/:name", (req, res) => {
+app.put("/users/:name", checkUserExist, checkNameExists, (req, res) => {
   const { name: firstName, lastName } = req.body;
   const { name } = req.params;
 
@@ -70,7 +104,7 @@ app.put("/users/:name", (req, res) => {
   });
 });
 
-app.delete("/users/:name", (req, res) => {
+app.delete("/users/:name", checkUserExist, (req, res) => {
   const { name } = req.params;
 
   let index;
